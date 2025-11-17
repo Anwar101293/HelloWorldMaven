@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Anwar101293/HelloWorldMaven.git',
+                        credentialsId: 'Jenkins'
+                    ]]
+                ])
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh "mvn clean install"
+            }
+        }
+    }
+
+    post {
+        success {
+             withCredentials([usernamePassword(
+                credentialsId: 'Jenkins',
+                usernameVariable: 'GIT_USERNAME',
+                passwordVariable: 'GIT_PASSWORD'
+            )]) {
+
+                sh '''
+                    # Config User Git
+                    git config user.email "anouar.rbpro@gmail.com"
+                    git config user.name "Anwar101293"
+
+                    # Secure Git credential helper (aucune interpolation de mot de passe)
+                    git config credential.helper "!f() { 
+                        echo username=$GIT_USERNAME; 
+                        echo password=$GIT_PASSWORD; 
+                    }; f"
+
+                    # Création du tag
+                    git tag v1.${BUILD_NUMBER}
+
+                    # Push sécurisé
+                    git push origin v1.${BUILD_NUMBER}
+                '''
+            }
+        }
+    }
+}
